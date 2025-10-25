@@ -6,9 +6,10 @@ edition = "2024"
 [dependencies]
 async-channel = "2.5.0"
 fs = "0.0.5"
-gio = "0.21.2"
-glib-macros = "0.21.2"
+
+glib-macros = "0.20.0"
 gtk = { version = "0.10.1", package = "gtk4", features = ["v4_12"] }
 io = "0.0.2"
+rfd = "0.15.4"
 tokio = { version = "1.48.0", features = ["full"] }
 
