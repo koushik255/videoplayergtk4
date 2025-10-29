@@ -38,7 +38,8 @@ fn build_ui(app: &Application) {
     let video_path = File::for_path(path);
     let media_file = MediaFile::for_file(&video_path);
     let shared_path = Rc::new(RefCell::new(glib::GString::from(path)));
-    let shared_directory_list = Rc::new(RefCell::new(listing_dir()));
+
+    let shared_directory_list = Rc::new(RefCell::new(listing_dir(current_dir)));
 
     let video = Video::new();
 
@@ -75,7 +76,10 @@ fn build_ui(app: &Application) {
         #[weak]
         video,
         move |pause_button| {
-            listing_dir();
+            let path =
+                "/home/koushikk/Downloads/SHOWS/OWAIMONO/[Commie] Owarimonogatari [BD 720p AAC]/";
+
+            listing_dir(path);
             if let Some(stream) = video.media_stream() {
                 stream.pause();
                 println!("pausing video playback");
@@ -109,7 +113,11 @@ fn build_ui(app: &Application) {
     let list_box = ListBox::new();
     list_box.set_selection_mode(gtk::SelectionMode::Single);
 
-    let filelist = listing_dir();
+    //
+    let fake_path =
+        "/home/koushikk/Downloads/SHOWS/OWAIMONO/[Commie] Owarimonogatari [BD 720p AAC]/";
+
+    let filelist = listing_dir(fake_path);
 
     for file in filelist {
         let label = Label::new(Some(
@@ -150,7 +158,9 @@ fn build_ui(app: &Application) {
 
                         println!("path after additon {}", path_to_add);
 
-                        let _ = open_video(listing_dir(), path_to_add.clone());
+                        let path = "/home/koushikk/Downloads/SHOWS/OWAIMONO/[Commie] Owarimonogatari [BD 720p AAC]/";
+
+                        let _ = open_video(listing_dir(path), path_to_add.clone());
                         // for my next button
                         // ok this works suprisingly
 
@@ -187,7 +197,10 @@ fn build_ui(app: &Application) {
             let current_video = video.media_stream();
             let true_path = shared_path.clone();
 
-            let index = open_video(listing_dir(), true_path.borrow_mut().to_string());
+            let fake_path =
+                "/home/koushikk/Downloads/SHOWS/OWAIMONO/[Commie] Owarimonogatari [BD 720p AAC]/";
+
+            let index = open_video(listing_dir(fake_path), true_path.borrow_mut().to_string());
             println!("Yo ur index is {}", index);
             // we want next so
             let next_video_index = (index as usize) + 1;
@@ -234,18 +247,33 @@ fn build_ui(app: &Application) {
     dir_button.set_size_request(80, -1);
 
     // this is how to make a  button use async stuff
-    dir_button.connect_clicked(move |_| {
-        glib::spawn_future_local(async move {
-            match pick_video_folder().await {
-                Ok(folder) => {
-                    println!("heres the fodler you selected {:?}", folder);
+    let list_box_clone_2 = list_box.clone();
+    dir_button.connect_clicked(clone!(
+        #[weak]
+        list_box_clone_2,
+        move |_| {
+            glib::spawn_future_local(async move {
+                match pick_video_folder().await {
+                    Ok(folder) => {
+                        println!("heres the fodler you selected {:?}", folder);
+                        let heredude = listing_dir(&folder.as_path().to_str().unwrap());
+                        list_box_clone_2.remove_all();
+
+                        for file in heredude {
+                            let label = Label::new(Some(
+                                &file.file_name().unwrap().to_string_lossy().to_string(),
+                            ));
+                            list_box_clone_2.append(&label);
+                        }
+                        // need to update the current Directory
+                    }
+                    Err(e) => {
+                        println!("heres the error fromg tring to open folder {}", e);
+                    }
                 }
-                Err(e) => {
-                    println!("heres the error fromg tring to open folder {}", e);
-                }
-            }
-        });
-    });
+            });
+        }
+    ));
 
     let vbox = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     vbox.append(&pause_button);
@@ -278,9 +306,10 @@ fn say_hello() {
     println!("hello from functions");
 }
 
-fn listing_dir() -> Vec<PathBuf> {
-    let path = "/home/koushikk/Downloads/SHOWS/OWAIMONO/[Commie] Owarimonogatari [BD 720p AAC]/";
+fn listing_dir(path: &str) -> Vec<PathBuf> {
+    // maybe i make this path a,
 
+    let path = path;
     let mut entries = read_dir(path)
         .expect("error")
         .map(|res| res.map(|e| e.path()))
